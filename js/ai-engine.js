@@ -1,6 +1,6 @@
 /**
  * AI引擎模块
- * 提供本地AI推理功能，包括文本分析、摘要生成、关键词提取等
+ * 提供本地AI推理功能和真实API调用功能，包括文本分析、摘要生成、关键词提取等
  */
 
 class AIEngine {
@@ -11,6 +11,7 @@ class AIEngine {
             summarization: null,
             keywordExtraction: null
         };
+        this.apiConfig = null;
         this.init();
     }
 
@@ -19,11 +20,33 @@ class AIEngine {
             // 模拟AI模型初始化
             console.log('AI引擎初始化中...');
             await this.loadModels();
+            
+            // 加载API配置
+            this.loadAPIConfig();
+            
             this.isInitialized = true;
             console.log('AI引擎初始化完成');
+            
+            // 监听配置更新事件
+            window.addEventListener('aiConfigUpdated', (e) => {
+                this.loadAPIConfig();
+                console.log('AI配置已更新，切换到API模式');
+            });
+            
+            window.addEventListener('aiConfigCleared', () => {
+                this.apiConfig = null;
+                console.log('AI配置已清除，切换到本地模拟模式');
+            });
+            
         } catch (error) {
             console.error('AI引擎初始化失败:', error);
             this.isInitialized = false;
+        }
+    }
+
+    loadAPIConfig() {
+        if (window.apiConfigManager) {
+            this.apiConfig = window.apiConfigManager.getActiveConfig();
         }
     }
 
@@ -39,6 +62,11 @@ class AIEngine {
         });
     }
 
+    // 检查是否使用API模式
+    isUsingAPI() {
+        return this.apiConfig && this.apiConfig.apiKey;
+    }
+
     // 文本摘要生成
     async generateSummary(text, maxLength = 200) {
         if (!this.isInitialized) {
@@ -49,19 +77,50 @@ class AIEngine {
             return '文本内容太短，无法生成摘要';
         }
 
-        // 模拟AI摘要生成
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const sentences = this.extractSentences(text);
-                const importantSentences = this.selectImportantSentences(sentences, maxLength);
-                const summary = importantSentences.join(' ');
-                resolve(summary || '无法生成有效摘要');
-            }, 1500);
-        });
+        if (this.isUsingAPI()) {
+            return await this.generateSummaryAPI(text, maxLength);
+        } else {
+            return await this.generateSummaryLocal(text, maxLength);
+        }
+    }
+
+    // API模式生成摘要
+    async generateSummaryAPI(text, maxLength) {
+        try {
+            const prompt = `请为以下文本生成一个简洁的摘要，长度控制在${maxLength}字以内：\n\n${text}`;
+            const response = await this.callAPI(prompt);
+            return response || '摘要生成失败';
+        } catch (error) {
+            console.error('API摘要生成失败:', error);
+            // 降级到本地模式
+            return await this.generateSummaryLocal(text, maxLength);
+        }
+    }
+
+    // 本地模式生成摘要
+    async generateSummaryLocal(text, maxLength) {
+        // 模拟处理时间
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // 简单的摘要算法：提取关键句子
+        const sentences = text.split(/[。！？.!?]+/).filter(s => s.trim().length > 10);
+        
+        if (sentences.length <= 2) {
+            return text.substring(0, maxLength) + (text.length > maxLength ? '...' : '');
+        }
+
+        // 选择前几个句子作为摘要
+        let summary = '';
+        for (const sentence of sentences) {
+            if (summary.length + sentence.length > maxLength) break;
+            summary += sentence.trim() + '。';
+        }
+
+        return summary || text.substring(0, maxLength) + '...';
     }
 
     // 关键词提取
-    async extractKeywords(text, maxKeywords = 10) {
+    async extractKeywords(text, count = 10) {
         if (!this.isInitialized) {
             throw new Error('AI引擎未初始化');
         }
@@ -70,300 +129,290 @@ class AIEngine {
             return [];
         }
 
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const keywords = this.performKeywordExtraction(text, maxKeywords);
-                resolve(keywords);
-            }, 1000);
-        });
+        if (this.isUsingAPI()) {
+            return await this.extractKeywordsAPI(text, count);
+        } else {
+            return await this.extractKeywordsLocal(text, count);
+        }
     }
 
-    // 知识点提取
-    async extractKnowledgePoints(text) {
+    // API模式提取关键词
+    async extractKeywordsAPI(text, count) {
+        try {
+            const prompt = `请从以下文本中提取${count}个最重要的关键词，用逗号分隔：\n\n${text}`;
+            const response = await this.callAPI(prompt);
+            
+            if (response) {
+                // 解析关键词
+                const keywords = response.split(/[,，、\n]/)
+                    .map(k => k.trim())
+                    .filter(k => k.length > 0 && k.length < 20)
+                    .slice(0, count);
+                return keywords;
+            }
+            return [];
+        } catch (error) {
+            console.error('API关键词提取失败:', error);
+            // 降级到本地模式
+            return await this.extractKeywordsLocal(text, count);
+        }
+    }
+
+    // 本地模式提取关键词
+    async extractKeywordsLocal(text, count) {
+        // 模拟处理时间
+        await new Promise(resolve => setTimeout(resolve, 600));
+
+        // 简单的关键词提取算法
+        const stopWords = new Set(['的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这']);
+        
+        // 分词（简单按标点和空格分割）
+        const words = text.match(/[\u4e00-\u9fa5]+/g) || [];
+        
+        // 统计词频
+        const wordCount = {};
+        words.forEach(word => {
+            if (word.length >= 2 && !stopWords.has(word)) {
+                wordCount[word] = (wordCount[word] || 0) + 1;
+            }
+        });
+
+        // 按频率排序并返回前N个
+        return Object.entries(wordCount)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, count)
+            .map(([word]) => word);
+    }
+
+    // 知识点分析
+    async analyzeKnowledge(text) {
         if (!this.isInitialized) {
             throw new Error('AI引擎未初始化');
         }
 
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const points = this.identifyKnowledgePoints(text);
-                resolve(points);
-            }, 1200);
+        if (!text || text.trim().length < 30) {
+            return {
+                concepts: [],
+                definitions: [],
+                steps: [],
+                examples: []
+            };
+        }
+
+        if (this.isUsingAPI()) {
+            return await this.analyzeKnowledgeAPI(text);
+        } else {
+            return await this.analyzeKnowledgeLocal(text);
+        }
+    }
+
+    // API模式知识点分析
+    async analyzeKnowledgeAPI(text) {
+        try {
+            const prompt = `请分析以下文本的知识点，按以下格式返回JSON：
+{
+  "concepts": ["概念1", "概念2"],
+  "definitions": ["定义1", "定义2"],
+  "steps": ["步骤1", "步骤2"],
+  "examples": ["例子1", "例子2"]
+}
+
+文本内容：
+${text}`;
+
+            const response = await this.callAPI(prompt);
+            
+            if (response) {
+                try {
+                    // 尝试解析JSON
+                    const jsonMatch = response.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        const parsed = JSON.parse(jsonMatch[0]);
+                        return {
+                            concepts: Array.isArray(parsed.concepts) ? parsed.concepts : [],
+                            definitions: Array.isArray(parsed.definitions) ? parsed.definitions : [],
+                            steps: Array.isArray(parsed.steps) ? parsed.steps : [],
+                            examples: Array.isArray(parsed.examples) ? parsed.examples : []
+                        };
+                    }
+                } catch (parseError) {
+                    console.warn('解析API响应失败，使用本地模式');
+                }
+            }
+        } catch (error) {
+            console.error('API知识点分析失败:', error);
+        }
+        
+        // 降级到本地模式
+        return await this.analyzeKnowledgeLocal(text);
+    }
+
+    // 本地模式知识点分析
+    async analyzeKnowledgeLocal(text) {
+        // 模拟处理时间
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const result = {
+            concepts: [],
+            definitions: [],
+            steps: [],
+            examples: []
+        };
+
+        // 简单的模式匹配
+        const sentences = text.split(/[。！？.!?]+/).filter(s => s.trim().length > 5);
+
+        sentences.forEach(sentence => {
+            const trimmed = sentence.trim();
+            
+            // 识别定义
+            if (trimmed.includes('是指') || trimmed.includes('定义为') || trimmed.includes('是一种')) {
+                result.definitions.push(trimmed);
+            }
+            
+            // 识别步骤
+            if (/第[一二三四五六七八九十\d]+步|步骤\d+|首先|然后|接着|最后|第\d+/.test(trimmed)) {
+                result.steps.push(trimmed);
+            }
+            
+            // 识别例子
+            if (trimmed.includes('例如') || trimmed.includes('比如') || trimmed.includes('举例')) {
+                result.examples.push(trimmed);
+            }
+            
+            // 提取概念（简单提取名词）
+            const concepts = trimmed.match(/[\u4e00-\u9fa5]{2,8}(?=的|是|为|等)/g);
+            if (concepts) {
+                result.concepts.push(...concepts.slice(0, 3));
+            }
         });
+
+        // 去重并限制数量
+        result.concepts = [...new Set(result.concepts)].slice(0, 5);
+        result.definitions = [...new Set(result.definitions)].slice(0, 3);
+        result.steps = [...new Set(result.steps)].slice(0, 5);
+        result.examples = [...new Set(result.examples)].slice(0, 3);
+
+        return result;
     }
 
     // 生成练习题
-    async generateQuestions(text, questionCount = 5) {
+    async generateQuestions(text, count = 5) {
         if (!this.isInitialized) {
             throw new Error('AI引擎未初始化');
         }
 
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const questions = this.createQuestions(text, questionCount);
-                resolve(questions);
-            }, 2000);
-        });
-    }
-
-    // 学习计划生成
-    async generateStudyPlan(notes, timeframe = 'week') {
-        if (!this.isInitialized) {
-            throw new Error('AI引擎未初始化');
+        if (!text || text.trim().length < 50) {
+            return [];
         }
 
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const plan = this.createStudyPlan(notes, timeframe);
-                resolve(plan);
-            }, 1800);
-        });
-    }
-
-    // 概念关系分析
-    async analyzeConceptRelations(text) {
-        if (!this.isInitialized) {
-            throw new Error('AI引擎未初始化');
+        if (this.isUsingAPI()) {
+            return await this.generateQuestionsAPI(text, count);
+        } else {
+            return await this.generateQuestionsLocal(text, count);
         }
-
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const relations = this.findConceptRelations(text);
-                resolve(relations);
-            }, 1500);
-        });
     }
 
-    // 辅助方法：提取句子
-    extractSentences(text) {
-        return text.split(/[。！？.!?]+/)
-            .map(s => s.trim())
-            .filter(s => s.length > 10);
-    }
+    // API模式生成练习题
+    async generateQuestionsAPI(text, count) {
+        try {
+            const prompt = `基于以下文本内容，生成${count}道练习题，包括选择题、填空题和简答题。请按以下JSON格式返回：
+[
+  {
+    "type": "choice",
+    "question": "题目",
+    "options": ["A选项", "B选项", "C选项", "D选项"],
+    "answer": "A"
+  },
+  {
+    "type": "fill",
+    "question": "题目（用___表示空白）",
+    "answer": "答案"
+  },
+  {
+    "type": "short",
+    "question": "题目",
+    "answer": "参考答案"
+  }
+]
 
-    // 辅助方法：选择重要句子
-    selectImportantSentences(sentences, maxLength) {
-        // 简单的启发式算法选择重要句子
-        const scored = sentences.map(sentence => ({
-            text: sentence,
-            score: this.calculateSentenceScore(sentence)
-        }));
+文本内容：
+${text}`;
 
-        scored.sort((a, b) => b.score - a.score);
-        
-        const selected = [];
-        let currentLength = 0;
-        
-        for (const item of scored) {
-            if (currentLength + item.text.length <= maxLength) {
-                selected.push(item.text);
-                currentLength += item.text.length;
-            }
-        }
-
-        return selected.slice(0, 3); // 最多3句
-    }
-
-    // 辅助方法：计算句子重要性分数
-    calculateSentenceScore(sentence) {
-        let score = 0;
-        
-        // 长度权重
-        score += Math.min(sentence.length / 50, 2);
-        
-        // 关键词权重
-        const keywords = ['重要', '关键', '核心', '主要', '基本', '原理', '概念', '定义'];
-        keywords.forEach(keyword => {
-            if (sentence.includes(keyword)) score += 1;
-        });
-        
-        // 数字和专业术语权重
-        if (/\d+/.test(sentence)) score += 0.5;
-        if (/[A-Z]{2,}/.test(sentence)) score += 0.5;
-        
-        return score;
-    }
-
-    // 辅助方法：关键词提取实现
-    performKeywordExtraction(text, maxKeywords) {
-        // 简单的TF-IDF模拟
-        const words = text.toLowerCase()
-            .replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, '')
-            .split(/\s+/)
-            .filter(word => word.length > 1);
-
-        const wordFreq = {};
-        words.forEach(word => {
-            wordFreq[word] = (wordFreq[word] || 0) + 1;
-        });
-
-        // 过滤停用词
-        const stopWords = new Set(['的', '是', '在', '有', '和', '与', '或', '但', '而', '了', '着', '过', '也', '都', '很', '就', '要', '会', '能', '可以', 'the', 'is', 'at', 'which', 'on', 'and', 'or', 'but', 'in', 'with', 'to', 'for', 'of', 'as', 'by']);
-
-        const keywords = Object.entries(wordFreq)
-            .filter(([word]) => !stopWords.has(word) && word.length > 1)
-            .sort(([,a], [,b]) => b - a)
-            .slice(0, maxKeywords)
-            .map(([word, freq]) => ({ word, frequency: freq, relevance: freq / words.length }));
-
-        return keywords;
-    }
-
-    // 辅助方法：识别知识点
-    identifyKnowledgePoints(text) {
-        const sentences = this.extractSentences(text);
-        const points = [];
-
-        sentences.forEach((sentence, index) => {
-            // 识别定义性句子
-            if (sentence.includes('是') || sentence.includes('定义为') || sentence.includes('指的是')) {
-                points.push({
-                    type: 'definition',
-                    content: sentence,
-                    importance: 'high',
-                    position: index
-                });
-            }
+            const response = await this.callAPI(prompt);
             
-            // 识别步骤性句子
-            if (/第[一二三四五六七八九十\d]+步|首先|然后|接着|最后/.test(sentence)) {
-                points.push({
-                    type: 'step',
-                    content: sentence,
-                    importance: 'medium',
-                    position: index
-                });
+            if (response) {
+                try {
+                    const jsonMatch = response.match(/\[[\s\S]*\]/);
+                    if (jsonMatch) {
+                        const parsed = JSON.parse(jsonMatch[0]);
+                        if (Array.isArray(parsed)) {
+                            return parsed.slice(0, count);
+                        }
+                    }
+                } catch (parseError) {
+                    console.warn('解析练习题响应失败，使用本地模式');
+                }
             }
-            
-            // 识别重要概念
-            if (/重要|关键|核心|主要/.test(sentence)) {
-                points.push({
-                    type: 'concept',
-                    content: sentence,
-                    importance: 'high',
-                    position: index
-                });
-            }
-        });
-
-        return points;
+        } catch (error) {
+            console.error('API练习题生成失败:', error);
+        }
+        
+        // 降级到本地模式
+        return await this.generateQuestionsLocal(text, count);
     }
 
-    // 辅助方法：创建练习题
-    createQuestions(text, questionCount) {
-        const sentences = this.extractSentences(text);
-        const keywords = this.performKeywordExtraction(text, 20);
+    // 本地模式生成练习题
+    async generateQuestionsLocal(text, count) {
+        // 模拟处理时间
+        await new Promise(resolve => setTimeout(resolve, 1200));
+
         const questions = [];
-
-        // 生成不同类型的问题
-        const questionTypes = [
-            { type: 'fill_blank', template: '请填空：{}' },
-            { type: 'choice', template: '关于{}，以下哪个说法是正确的？' },
-            { type: 'short_answer', template: '请简述{}的含义。' },
-            { type: 'true_false', template: '判断正误：{}' }
-        ];
-
-        for (let i = 0; i < Math.min(questionCount, sentences.length); i++) {
-            const sentence = sentences[i];
-            const questionType = questionTypes[i % questionTypes.length];
-            const keyword = keywords[i % keywords.length];
-
-            let question = {
-                id: `q_${Date.now()}_${i}`,
-                type: questionType.type,
-                question: questionType.template.replace('{}', keyword ? keyword.word : '相关概念'),
-                context: sentence,
-                difficulty: 'medium',
-                createdAt: new Date().toISOString()
-            };
-
-            // 为选择题生成选项
-            if (questionType.type === 'choice') {
-                question.options = [
-                    '选项A：正确答案',
-                    '选项B：干扰项1',
-                    '选项C：干扰项2',
-                    '选项D：干扰项3'
-                ];
-                question.correctAnswer = 'A';
+        const sentences = text.split(/[。！？.!?]+/).filter(s => s.trim().length > 10);
+        
+        // 生成简单的练习题
+        for (let i = 0; i < Math.min(count, sentences.length); i++) {
+            const sentence = sentences[i].trim();
+            
+            if (i % 3 === 0) {
+                // 选择题
+                questions.push({
+                    type: 'choice',
+                    question: `关于"${sentence.substring(0, 20)}..."的描述，以下哪项正确？`,
+                    options: [
+                        sentence.substring(0, 30) + '...',
+                        '这是错误选项A',
+                        '这是错误选项B',
+                        '这是错误选项C'
+                    ],
+                    answer: 'A'
+                });
+            } else if (i % 3 === 1) {
+                // 填空题
+                const words = sentence.split('');
+                if (words.length > 10) {
+                    const blankStart = Math.floor(words.length * 0.3);
+                    const blankEnd = Math.floor(words.length * 0.6);
+                    const answer = words.slice(blankStart, blankEnd).join('');
+                    const question = words.slice(0, blankStart).join('') + '___' + words.slice(blankEnd).join('');
+                    
+                    questions.push({
+                        type: 'fill',
+                        question: question,
+                        answer: answer
+                    });
+                }
+            } else {
+                // 简答题
+                questions.push({
+                    type: 'short',
+                    question: `请简述：${sentence.substring(0, 30)}...`,
+                    answer: sentence
+                });
             }
-
-            questions.push(question);
         }
 
         return questions;
-    }
-
-    // 辅助方法：创建学习计划
-    createStudyPlan(notes, timeframe) {
-        const plan = {
-            timeframe,
-            createdAt: new Date().toISOString(),
-            totalNotes: notes.length,
-            estimatedHours: notes.length * 0.5, // 每个笔记预计0.5小时
-            phases: []
-        };
-
-        // 根据时间框架分配学习阶段
-        const phases = timeframe === 'week' ? 
-            ['复习基础概念', '深入理解', '练习应用', '总结巩固'] :
-            ['初步学习', '深入研究', '实践应用', '复习总结', '拓展学习'];
-
-        phases.forEach((phase, index) => {
-            const phaseNotes = notes.slice(
-                Math.floor(index * notes.length / phases.length),
-                Math.floor((index + 1) * notes.length / phases.length)
-            );
-
-            plan.phases.push({
-                name: phase,
-                order: index + 1,
-                notes: phaseNotes.map(note => ({
-                    id: note.id,
-                    title: note.title,
-                    estimatedTime: 30 // 分钟
-                })),
-                tasks: [
-                    `阅读并理解${phaseNotes.length}个笔记`,
-                    `完成相关练习题`,
-                    `总结关键概念`
-                ],
-                estimatedDays: Math.ceil(phaseNotes.length / 2)
-            });
-        });
-
-        return plan;
-    }
-
-    // 辅助方法：查找概念关系
-    findConceptRelations(text) {
-        const keywords = this.performKeywordExtraction(text, 15);
-        const relations = [];
-
-        // 简单的共现关系分析
-        for (let i = 0; i < keywords.length; i++) {
-            for (let j = i + 1; j < keywords.length; j++) {
-                const word1 = keywords[i].word;
-                const word2 = keywords[j].word;
-                
-                // 检查两个词是否在同一句子中出现
-                const sentences = this.extractSentences(text);
-                const cooccurrence = sentences.filter(sentence => 
-                    sentence.includes(word1) && sentence.includes(word2)
-                ).length;
-
-                if (cooccurrence > 0) {
-                    relations.push({
-                        source: word1,
-                        target: word2,
-                        strength: cooccurrence,
-                        type: 'cooccurrence'
-                    });
-                }
-            }
-        }
-
-        return relations.sort((a, b) => b.strength - a.strength).slice(0, 10);
     }
 
     // 智能问答
@@ -372,61 +421,233 @@ class AIEngine {
             throw new Error('AI引擎未初始化');
         }
 
-        return new Promise(resolve => {
-            setTimeout(() => {
-                // 模拟智能问答
-                const answer = this.generateAnswer(question, context);
-                resolve(answer);
-            }, 1500);
-        });
+        if (!question || question.trim().length < 3) {
+            return '请输入有效的问题';
+        }
+
+        if (this.isUsingAPI()) {
+            return await this.answerQuestionAPI(question, context);
+        } else {
+            return await this.answerQuestionLocal(question, context);
+        }
     }
 
-    // 辅助方法：生成答案
-    generateAnswer(question, context) {
-        const responses = [
-            '根据提供的内容，我认为这个问题涉及到几个关键概念...',
-            '这是一个很好的问题。让我从以下几个方面来分析...',
-            '基于上下文信息，我可以为您提供以下解释...',
-            '这个概念可以从多个角度来理解...'
-        ];
+    // API模式智能问答
+    async answerQuestionAPI(question, context) {
+        try {
+            let prompt = `请回答以下问题：${question}`;
+            if (context) {
+                prompt += `\n\n参考上下文：\n${context}`;
+            }
+            
+            const response = await this.callAPI(prompt);
+            return response || '抱歉，无法回答这个问题';
+        } catch (error) {
+            console.error('API问答失败:', error);
+            // 降级到本地模式
+            return await this.answerQuestionLocal(question, context);
+        }
+    }
 
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    // 本地模式智能问答
+    async answerQuestionLocal(question, context) {
+        // 模拟处理时间
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // 简单的问答逻辑
+        const q = question.toLowerCase();
         
-        return {
-            answer: randomResponse,
-            confidence: Math.random() * 0.3 + 0.7, // 0.7-1.0
-            sources: context ? ['当前笔记内容'] : [],
-            suggestions: [
-                '建议查阅相关资料以获得更深入的理解',
-                '可以尝试通过实例来加深理解',
-                '建议与其他相关概念进行对比学习'
-            ]
-        };
+        if (q.includes('什么是') || q.includes('什么叫')) {
+            return '这是一个定义类问题。根据上下文，这个概念通常指...[本地模拟回答]';
+        } else if (q.includes('如何') || q.includes('怎么')) {
+            return '这是一个方法类问题。一般来说，可以通过以下步骤...[本地模拟回答]';
+        } else if (q.includes('为什么') || q.includes('原因')) {
+            return '这是一个原因类问题。主要原因可能包括...[本地模拟回答]';
+        } else {
+            return `关于"${question}"的问题，这是一个很好的问题。基于当前的知识，我认为...[本地模拟回答]`;
+        }
     }
 
-    // 获取AI引擎状态
+    // 调用API的通用方法
+    async callAPI(prompt, maxTokens = 1000) {
+        if (!this.apiConfig) {
+            throw new Error('API配置未找到');
+        }
+
+        const { provider, apiKey, model } = this.apiConfig;
+
+        switch (provider) {
+            case 'openai':
+                return await this.callOpenAI(prompt, maxTokens);
+            case 'claude':
+                return await this.callClaude(prompt, maxTokens);
+            case 'qwen':
+                return await this.callQwen(prompt, maxTokens);
+            case 'ernie':
+                return await this.callErnie(prompt, maxTokens);
+            case 'gemini':
+                return await this.callGemini(prompt, maxTokens);
+            default:
+                throw new Error(`不支持的API提供商: ${provider}`);
+        }
+    }
+
+    // OpenAI API调用
+    async callOpenAI(prompt, maxTokens) {
+        const baseURL = this.apiConfig.baseURL || 'https://api.openai.com/v1';
+        
+        const response = await fetch(`${baseURL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: this.apiConfig.model,
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: maxTokens,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || '请求失败');
+        }
+
+        const data = await response.json();
+        return data.choices[0]?.message?.content || '';
+    }
+
+    // Claude API调用
+    async callClaude(prompt, maxTokens) {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': this.apiConfig.apiKey,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: this.apiConfig.model,
+                max_tokens: maxTokens,
+                messages: [{ role: 'user', content: prompt }]
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || '请求失败');
+        }
+
+        const data = await response.json();
+        return data.content[0]?.text || '';
+    }
+
+    // 通义千问API调用
+    async callQwen(prompt, maxTokens) {
+        const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiConfig.apiKey}`
+            },
+            body: JSON.stringify({
+                model: this.apiConfig.model,
+                input: {
+                    messages: [{ role: 'user', content: prompt }]
+                },
+                parameters: {
+                    max_tokens: maxTokens,
+                    temperature: 0.7
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || '请求失败');
+        }
+
+        const data = await response.json();
+        return data.output?.text || '';
+    }
+
+    // 文心一言API调用
+    async callErnie(prompt, maxTokens) {
+        // 文心一言需要先获取access_token
+        const tokenResponse = await fetch(`https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${this.apiConfig.clientId}&client_secret=${this.apiConfig.clientSecret}`, {
+            method: 'POST'
+        });
+
+        if (!tokenResponse.ok) {
+            throw new Error('获取访问令牌失败');
+        }
+
+        const tokenData = await tokenResponse.json();
+        const accessToken = tokenData.access_token;
+
+        const response = await fetch(`https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions?access_token=${accessToken}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                messages: [{ role: 'user', content: prompt }],
+                max_output_tokens: maxTokens,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error_msg || '请求失败');
+        }
+
+        const data = await response.json();
+        return data.result || '';
+    }
+
+    // Gemini API调用
+    async callGemini(prompt, maxTokens) {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${this.apiConfig.model}:generateContent?key=${this.apiConfig.apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    maxOutputTokens: maxTokens,
+                    temperature: 0.7
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || '请求失败');
+        }
+
+        const data = await response.json();
+        return data.candidates[0]?.content?.parts[0]?.text || '';
+    }
+
+    // 获取AI状态
     getStatus() {
         return {
             initialized: this.isInitialized,
-            models: Object.keys(this.models).map(key => ({
-                name: key,
-                loaded: this.models[key]?.loaded || false
-            })),
-            capabilities: [
-                '文本摘要生成',
-                '关键词提取',
-                '知识点识别',
-                '练习题生成',
-                '学习计划制定',
-                '概念关系分析',
-                '智能问答'
-            ]
+            usingAPI: this.isUsingAPI(),
+            provider: this.apiConfig?.providerName || '本地模拟',
+            model: this.apiConfig?.model || '本地模型'
         };
     }
 }
 
-// 创建全局AI引擎实例
-window.aiEngine = new AIEngine();
+// 初始化AI引擎
+document.addEventListener('DOMContentLoaded', () => {
+    window.aiEngine = new AIEngine();
+});
 
 // 导出模块
 if (typeof module !== 'undefined' && module.exports) {

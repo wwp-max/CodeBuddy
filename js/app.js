@@ -106,6 +106,13 @@ class SmartNotesApp {
             this.importData();
         });
 
+        // API配置功能
+        document.getElementById('api-config-btn')?.addEventListener('click', () => {
+            if (window.apiConfigManager) {
+                window.apiConfigManager.showModal();
+            }
+        });
+
 
 
         // 文件输入处理
@@ -141,6 +148,15 @@ class SmartNotesApp {
 
         document.addEventListener('nodeClick', (e) => {
             this.handleGraphNodeClick(e.detail);
+        });
+
+        // AI配置事件监听
+        window.addEventListener('aiConfigUpdated', (e) => {
+            this.onAIConfigUpdated(e.detail);
+        });
+
+        window.addEventListener('aiConfigCleared', () => {
+            this.onAIConfigCleared();
         });
 
 
@@ -552,6 +568,68 @@ class SmartNotesApp {
 
 
 
+
+    // AI配置更新处理
+    onAIConfigUpdated(config) {
+        console.log('AI配置已更新:', config);
+        
+        // 更新UI状态
+        this.updateAIStatus();
+        
+        // 显示成功消息
+        this.showSuccessMessage(`✅ AI配置已更新，现在使用 ${config.providerName} 提供的AI服务`);
+        
+        // 如果当前在AI助手标签页，刷新界面
+        if (this.currentTab === 'ai') {
+            this.refreshAIPanel();
+        }
+    }
+
+    // AI配置清除处理
+    onAIConfigCleared() {
+        console.log('AI配置已清除');
+        
+        // 更新UI状态
+        this.updateAIStatus();
+        
+        // 显示信息消息
+        this.showInfoMessage('🔄 已切换到本地模拟模式');
+        
+        // 如果当前在AI助手标签页，刷新界面
+        if (this.currentTab === 'ai') {
+            this.refreshAIPanel();
+        }
+    }
+
+    // 更新AI状态显示
+    updateAIStatus() {
+        const aiConfigBtn = document.getElementById('api-config-btn');
+        if (aiConfigBtn && window.apiConfigManager) {
+            const status = window.apiConfigManager.getConfigStatus();
+            
+            if (status.configured) {
+                aiConfigBtn.textContent = `🤖 AI配置 (${status.provider})`;
+                aiConfigBtn.classList.remove('btn-secondary');
+                aiConfigBtn.classList.add('btn-primary');
+                aiConfigBtn.title = `当前使用 ${status.provider} - ${status.model}`;
+            } else {
+                aiConfigBtn.textContent = '🤖 AI配置';
+                aiConfigBtn.classList.remove('btn-primary');
+                aiConfigBtn.classList.add('btn-secondary');
+                aiConfigBtn.title = '点击配置AI服务以获得更好的体验';
+            }
+        }
+    }
+
+    // 刷新AI面板
+    refreshAIPanel() {
+        // 这里可以添加刷新AI助手界面的逻辑
+        const aiPanel = document.getElementById('ai-panel');
+        if (aiPanel) {
+            // 触发AI面板刷新事件
+            aiPanel.dispatchEvent(new CustomEvent('refresh'));
+        }
+    }
 
     // 应用清理
     destroy() {
