@@ -1,0 +1,37 @@
+{
+  "name": "smart-notes-app",
+  "version": "1.0.0",
+  "description": "AI驱动的智慧学习笔记Web应用",
+  "main": "index.html",
+  "scripts": {
+    "start": "http-server -p 8000 -c-1 --cors",
+    "dev": "http-server -p 8000 -c-1 --cors -o",
+    "build": "echo 'This is a client-side only application, no build step required'",
+    "serve": "python server.py"
+  },
+  "keywords": [
+    "notes",
+    "ai",
+    "learning",
+    "knowledge-graph",
+    "pwa",
+    "education"
+  ],
+  "author": "CodeBuddy",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/smart-notes-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/smart-notes-app/issues"
+  },
+  "homepage": "https://github.com/your-username/smart-notes-app#readme",
+  "engines": {
+    "node": ">=12.0.0"
+  }
+}

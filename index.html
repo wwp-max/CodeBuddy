@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧学习笔记 - AI驱动的知识管理平台</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+    <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- 顶部导航栏 -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🧠</span>
+                    <h1>智慧学习笔记</h1>
+                </div>
+                <nav class="nav-tabs">
+                    <button class="nav-tab active" data-tab="notes">📝 笔记编辑</button>
+                    <button class="nav-tab" data-tab="graph">🕸️ 知识图谱</button>
+                    <button class="nav-tab" data-tab="tasks">✅ 学习任务</button>
+                    <button class="nav-tab" data-tab="ai">🤖 AI助手</button>
+                </nav>
+                <div class="header-actions">
+                    <button id="exportBtn" class="btn-secondary">📤 导出</button>
+                    <button id="importBtn" class="btn-secondary">📥 导入</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 笔记编辑面板 -->
+            <section id="notes-panel" class="panel active">
+                <div class="panel-header">
+                    <h2>📝 笔记编辑器</h2>
+                    <div class="panel-actions">
+                        <button id="newNoteBtn" class="btn-primary">+ 新建笔记</button>
+                        <button id="saveNoteBtn" class="btn-primary">💾 保存</button>
+                    </div>
+                </div>
+                <div class="notes-container">
+                    <aside class="notes-sidebar">
+                        <div class="search-box">
+                            <input type="text" id="noteSearch" placeholder="🔍 搜索笔记...">
+                        </div>
+                        <div id="notesList" class="notes-list">
+                            <!-- 笔记列表将在这里动态生成 -->
+                        </div>
+                    </aside>
+                    <div class="editor-container">
+                        <div class="editor-header">
+                            <input type="text" id="noteTitle" placeholder="输入笔记标题..." class="note-title-input">
+                            <div class="editor-toolbar">
+                                <button class="toolbar-btn" data-action="bold">B</button>
+                                <button class="toolbar-btn" data-action="italic">I</button>
+                                <button class="toolbar-btn" data-action="heading">H</button>
+                                <button class="toolbar-btn" data-action="list">•</button>
+                                <button class="toolbar-btn" data-action="link">🔗</button>
+                            </div>
+                        </div>
+                        <div class="editor-content">
+                            <textarea id="noteEditor" placeholder="开始记录你的学习笔记...支持Markdown格式"></textarea>
+                            <div id="notePreview" class="note-preview hidden"></div>
+                        </div>
+                        <div class="editor-footer">
+                            <button id="previewToggle" class="btn-secondary">👁️ 预览</button>
+                            <button id="aiAnalyzeBtn" class="btn-ai">🤖 AI分析</button>
+                            <span class="word-count">字数: 0</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 知识图谱面板 -->
+            <section id="graph-panel" class="panel">
+                <div class="panel-header">
+                    <h2>🕸️ 知识图谱</h2>
+                    <div class="panel-actions">
+                        <button id="refreshGraphBtn" class="btn-primary">🔄 刷新图谱</button>
+                        <button id="exportGraphBtn" class="btn-secondary">📸 导出图片</button>
+                    </div>
+                </div>
+                <div class="graph-container">
+                    <div class="graph-controls">
+                        <label>
+                            <input type="range" id="graphZoom" min="0.1" max="2" step="0.1" value="1">
+                            缩放
+                        </label>
+                        <label>
+                            <select id="graphLayout">
+                                <option value="force">力导向布局</option>
+                                <option value="circle">圆形布局</option>
+                                <option value="tree">树形布局</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="knowledgeGraph" class="knowledge-graph">
+                        <!-- D3.js 知识图谱将在这里渲染 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 学习任务面板 -->
+            <section id="tasks-panel" class="panel">
+                <div class="panel-header">
+                    <h2>✅ 学习任务</h2>
+                    <div class="panel-actions">
+                        <button id="addTaskBtn" class="btn-primary">+ 添加任务</button>
+                        <button id="generateTasksBtn" class="btn-ai">🤖 AI生成任务</button>
+                    </div>
+                </div>
+                <div class="tasks-container">
+                    <div class="task-stats">
+                        <div class="stat-card">
+                            <span class="stat-number" id="totalTasks">0</span>
+                            <span class="stat-label">总任务</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="completedTasks">0</span>
+                            <span class="stat-label">已完成</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-number" id="progressPercent">0%</span>
+                            <span class="stat-label">完成率</span>
+                        </div>
+                    </div>
+                    <div id="tasksList" class="tasks-list">
+                        <!-- 任务列表将在这里动态生成 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI助手面板 -->
+            <section id="ai-panel" class="panel">
+                <div class="panel-header">
+                    <h2>🤖 AI学习助手</h2>
+                    <div class="panel-actions">
+                        <button id="clearChatBtn" class="btn-secondary">🗑️ 清空对话</button>
+                    </div>
+                </div>
+                <div class="ai-container">
+                    <div id="chatMessages" class="chat-messages">
+                        <div class="welcome-message">
+                            <div class="ai-avatar">🤖</div>
+                            <div class="message-content">
+                                <p>你好！我是你的AI学习助手。我可以帮你：</p>
+                                <ul>
+                                    <li>📝 总结和分析笔记内容</li>
+                                    <li>🔍 提取关键概念和知识点</li>
+                                    <li>❓ 生成练习题和测试</li>
+                                    <li>🎯 制定学习计划</li>
+                                    <li>💡 解答学习疑问</li>
+                                </ul>
+                                <p>有什么可以帮助你的吗？</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <div class="chat-input-wrapper">
+                            <textarea id="chatInput" placeholder="输入你的问题或需求..." rows="2"></textarea>
+                            <button id="sendChatBtn" class="btn-primary">发送</button>
+                        </div>
+                        <div class="quick-actions">
+                            <button class="quick-btn" data-action="summarize">📋 总结笔记</button>
+                            <button class="quick-btn" data-action="keywords">🏷️ 提取关键词</button>
+                            <button class="quick-btn" data-action="quiz">❓ 生成测试</button>
+                            <button class="quick-btn" data-action="plan">📅 制定计划</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 加载指示器 -->
+        <div id="loadingIndicator" class="loading-indicator hidden">
+            <div class="spinner"></div>
+            <span>AI正在处理中...</span>
+        </div>
+
+        <!-- 模态框 -->
+        <div id="modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">标题</h3>
+                    <button id="modalClose" class="modal-close">×</button>
+                </div>
+                <div id="modalBody" class="modal-body">
+                    <!-- 模态框内容 -->
+                </div>
+                <div class="modal-footer">
+                    <button id="modalCancel" class="btn-secondary">取消</button>
+                    <button id="modalConfirm" class="btn-primary">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐藏的文件输入 -->
+    <input type="file" id="fileInput" accept=".json,.md,.txt" style="display: none;">
+
+    <!-- JavaScript 模块 -->
+    <script src="js/storage.js"></script>
+    <script src="js/ai-engine.js"></script>
+    <script src="js/knowledge-graph.js"></script>
+    <script src="js/task-manager.js"></script>
+    <script src="js/note-editor.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
