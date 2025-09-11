@@ -9,32 +9,32 @@ class APIConfigManager {
             openai: {
                 name: 'OpenAI',
                 baseURL: 'https://api.openai.com/v1',
-                models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo'],
-                defaultModel: 'gpt-3.5-turbo'
+                models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+                defaultModel: 'gpt-4o-mini'
             },
             claude: {
                 name: 'Claude (Anthropic)',
                 baseURL: 'https://api.anthropic.com/v1',
-                models: ['claude-3-haiku-20240307', 'claude-3-sonnet-20240229', 'claude-3-opus-20240229'],
-                defaultModel: 'claude-3-haiku-20240307'
+                models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
+                defaultModel: 'claude-3-5-sonnet-20241022'
             },
             qwen: {
                 name: '通义千问',
                 baseURL: 'https://dashscope.aliyuncs.com/api/v1',
-                models: ['qwen-turbo', 'qwen-plus', 'qwen-max'],
-                defaultModel: 'qwen-turbo'
+                models: ['qwen2.5-72b-instruct', 'qwen2.5-32b-instruct', 'qwen2.5-14b-instruct', 'qwen2.5-7b-instruct', 'qwen-max', 'qwen-plus', 'qwen-turbo'],
+                defaultModel: 'qwen2.5-72b-instruct'
             },
             ernie: {
                 name: '文心一言',
                 baseURL: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1',
-                models: ['ernie-bot', 'ernie-bot-turbo', 'ernie-bot-4'],
-                defaultModel: 'ernie-bot-turbo'
+                models: ['ernie-4.0-turbo-8k', 'ernie-4.0-8k', 'ernie-3.5-8k', 'ernie-3.5-4k', 'ernie-bot-4', 'ernie-bot-turbo', 'ernie-bot'],
+                defaultModel: 'ernie-4.0-turbo-8k'
             },
             gemini: {
                 name: 'Gemini',
-                baseURL: 'https://generativelanguage.googleapis.com/v1',
-                models: ['gemini-pro', 'gemini-pro-vision'],
-                defaultModel: 'gemini-pro'
+                baseURL: 'https://generativelanguage.googleapis.com/v1beta',
+                models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro'],
+                defaultModel: 'gemini-2.5-flash'
             }
         };
         
@@ -181,9 +181,12 @@ class APIConfigManager {
                     <div class="provider-note">
                         <p><strong>获取API密钥：</strong></p>
                         <ol>
-                            <li>访问 <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
-                            <li>创建新的API密钥</li>
+                            <li>访问 <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+                            <li>使用Google账户登录</li>
+                            <li>点击"Create API Key"创建新的API密钥</li>
+                            <li>复制生成的API密钥</li>
                         </ol>
+                        <p class="note"><strong>注意：</strong>Gemini API目前可能需要科学上网才能正常访问。</p>
                     </div>
                 `;
             default:
@@ -487,14 +490,34 @@ class APIConfigManager {
     }
 
     async testGemini(config, message) {
+        // 处理不同版本的Gemini模型
+        const isGemini25 = config.model.startsWith('gemini-2.5');
+        const isGemini2 = config.model.startsWith('gemini-2');
+        
+        // 为不同版本配置不同的参数
+        const generationConfig = {
+            maxOutputTokens: 10,
+            temperature: 0.7
+        };
+        
+        if (isGemini25 || isGemini2) {
+            generationConfig.topP = 0.95;
+            generationConfig.topK = 40;
+        } else {
+            generationConfig.topP = 0.8;
+            generationConfig.topK = 10;
+        }
+        
         const response = await fetch(`${this.providers.gemini.baseURL}/models/${config.model}:generateContent?key=${config.apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: message }] }],
-                generationConfig: { maxOutputTokens: 10 }
+                contents: [{ 
+                    parts: [{ text: message }] 
+                }],
+                generationConfig
             })
         });
 

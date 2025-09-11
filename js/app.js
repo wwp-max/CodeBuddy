@@ -141,6 +141,9 @@ class SmartNotesApp {
             this.handleGlobalKeyboardShortcuts(e);
         });
 
+        // AI助手功能
+        this.initAIAssistant();
+
         // 自定义事件监听
         document.addEventListener('switchTab', (e) => {
             this.switchTab(e.detail.tab);
@@ -190,7 +193,18 @@ class SmartNotesApp {
             panel.classList.remove('active');
         });
         
-        document.getElementById(`${tabName}-panel`)?.classList.add('active');
+        // 处理面板ID的映射
+        const panelIdMap = {
+            'notes': 'notes-panel',
+            'graph': 'graph-panel', 
+            'tasks': 'tasks-panel',
+            'ai': 'ai-panel'
+        };
+        
+        const panelId = panelIdMap[tabName];
+        if (panelId) {
+            document.getElementById(panelId)?.classList.add('active');
+        }
         
         this.currentTab = tabName;
         
@@ -628,6 +642,221 @@ class SmartNotesApp {
         if (aiPanel) {
             // 触发AI面板刷新事件
             aiPanel.dispatchEvent(new CustomEvent('refresh'));
+        }
+    }
+
+    // 初始化AI助手
+    initAIAssistant() {
+        // 发送按钮事件
+        document.getElementById('sendChatBtn')?.addEventListener('click', () => {
+            this.sendChatMessage();
+        });
+
+        // 输入框回车事件
+        document.getElementById('chatInput')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendChatMessage();
+            }
+        });
+
+        // 清空对话按钮
+        document.getElementById('clearChatBtn')?.addEventListener('click', () => {
+            this.clearChat();
+        });
+
+        // 快捷操作按钮
+        document.querySelectorAll('.quick-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.target.dataset.action;
+                this.handleQuickAction(action);
+            });
+        });
+    }
+
+    // 发送聊天消息
+    async sendChatMessage() {
+        const chatInput = document.getElementById('chatInput');
+        const message = chatInput.value.trim();
+        
+        if (!message) return;
+
+        // 清空输入框
+        chatInput.value = '';
+
+        // 添加用户消息到聊天界面
+        this.addChatMessage(message, 'user');
+
+        // 显示加载状态
+        const loadingId = this.addChatMessage('AI正在思考中...', 'ai', true);
+
+        try {
+            // 调用AI引擎获取回复
+            const response = await window.aiEngine.answerQuestion(message, this.getCurrentNoteContent());
+            
+            // 移除加载消息，添加AI回复
+            this.removeChatMessage(loadingId);
+            this.addChatMessage(response, 'ai');
+            
+        } catch (error) {
+            console.error('AI回复失败:', error);
+            this.removeChatMessage(loadingId);
+            this.addChatMessage('抱歉，AI暂时无法回复，请稍后再试。', 'ai');
+        }
+    }
+
+    // 添加聊天消息
+    addChatMessage(content, sender, isLoading = false) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${sender}-message`;
+        messageDiv.id = messageId;
+        
+        if (isLoading) {
+            messageDiv.classList.add('loading');
+        }
+        
+        messageDiv.innerHTML = `
+            <div class="${sender === 'ai' ? 'ai-avatar' : 'user-avatar'}">
+                ${sender === 'ai' ? '🤖' : '👤'}
+            </div>
+            <div class="message-content">
+                <div class="message-text">${content}</div>
+                <div class="message-time">${new Date().toLocaleTimeString()}</div>
+            </div>
+        `;
+        
+        chatMessages.appendChild(messageDiv);
+        
+        // 滚动到底部
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        return messageId;
+    }
+
+    // 移除聊天消息
+    removeChatMessage(messageId) {
+        const message = document.getElementById(messageId);
+        if (message) {
+            message.remove();
+        }
+    }
+
+    // 清空聊天记录
+    clearChat() {
+        const chatMessages = document.getElementById('chatMessages');
+        // 保留欢迎消息，清除其他消息
+        const welcomeMessage = chatMessages.querySelector('.welcome-message');
+        chatMessages.innerHTML = '';
+        if (welcomeMessage) {
+            chatMessages.appendChild(welcomeMessage);
+        }
+    }
+
+    // 获取当前笔记内容作为上下文
+    getCurrentNoteContent() {
+        const noteEditor = document.getElementById('noteEditor');
+        return noteEditor ? noteEditor.value : '';
+    }
+
+    // 处理快捷操作
+    async handleQuickAction(action) {
+        const currentNote = this.getCurrentNoteContent();
+        
+        if (!currentNote.trim()) {
+            this.addChatMessage('请先在笔记编辑器中输入一些内容，然后再使用快捷功能。', 'ai');
+            return;
+        }
+
+        let prompt = '';
+        let loadingText = '';
+
+        switch (action) {
+            case 'summarize':
+                prompt = '请总结这篇笔记的主要内容';
+                loadingText = '正在总结笔记内容...';
+                break;
+            case 'keywords':
+                prompt = '请提取这篇笔记的关键词';
+                loadingText = '正在提取关键词...';
+                break;
+            case 'quiz':
+                prompt = '请基于这篇笔记生成一些练习题';
+                loadingText = '正在生成练习题...';
+                break;
+            case 'plan':
+                prompt = '请基于这篇笔记内容制定一个学习计划';
+                loadingText = '正在制定学习计划...';
+                break;
+            default:
+                return;
+        }
+
+        // 添加用户请求消息
+        this.addChatMessage(prompt, 'user');
+
+        // 显示加载状态
+        const loadingId = this.addChatMessage(loadingText, 'ai', true);
+
+        try {
+            let response = '';
+            
+            switch (action) {
+                case 'summarize':
+                    response = await window.aiEngine.generateSummary(currentNote);
+                    break;
+                case 'keywords':
+                    const keywords = await window.aiEngine.extractKeywords(currentNote);
+                    response = keywords.length > 0 ? 
+                        `关键词：${keywords.join('、')}` : 
+                        '未能提取到关键词';
+                    break;
+                case 'quiz':
+                    const questions = await window.aiEngine.generateQuestions(currentNote);
+                    if (questions.length > 0) {
+                        response = '为您生成了以下练习题：\
+\
+';
+                        questions.forEach((q, i) => {
+                            response += `${i + 1}. ${q.question}\
+`;
+                            if (q.type === 'choice' && q.options) {
+                                q.options.forEach((opt, j) => {
+                                    response += `   ${String.fromCharCode(65 + j)}. ${opt}\
+`;
+                                });
+                                response += `   答案：${q.answer}\
+\
+`;
+                            } else if (q.type === 'fill') {
+                                response += `   答案：${q.answer}\
+\
+`;
+                            } else if (q.type === 'short') {
+                                response += `   参考答案：${q.answer}\
+\
+`;
+                            }
+                        });
+                    } else {
+                        response = '未能生成练习题，请确保笔记内容足够详细。';
+                    }
+                    break;
+                case 'plan':
+                    response = await window.aiEngine.answerQuestion('请基于以下内容制定一个详细的学习计划：', currentNote);
+                    break;
+            }
+            
+            // 移除加载消息，添加AI回复
+            this.removeChatMessage(loadingId);
+            this.addChatMessage(response, 'ai');
+            
+        } catch (error) {
+            console.error('快捷操作失败:', error);
+            this.removeChatMessage(loadingId);
+            this.addChatMessage('操作失败，请稍后再试。', 'ai');
         }
     }
 

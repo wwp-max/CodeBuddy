@@ -7,7 +7,7 @@
 ### 1. OpenAI (推荐)
 
 **特点**：功能强大，响应快速，支持多种模型
-**模型**：GPT-3.5-turbo, GPT-4, GPT-4-turbo
+**最新模型**：GPT-4o-mini (推荐), GPT-4o, GPT-4-turbo, GPT-4, GPT-3.5-turbo
 
 **获取步骤**：
 1. 访问 [OpenAI API Keys](https://platform.openai.com/api-keys)
@@ -16,9 +16,14 @@
 4. 复制生成的API密钥
 5. 在应用中选择"OpenAI"并粘贴密钥
 
+**推荐配置**：
+- **性价比首选**：GPT-4o-mini（速度快，成本低，性能优秀）
+- **最强性能**：GPT-4o（最新旗舰模型）
+- **经济选择**：GPT-3.5-turbo（成本最低）
+
 **注意事项**：
 - 需要绑定信用卡并充值
-- 按使用量计费，GPT-3.5相对便宜
+- GPT-4o-mini性价比最高，推荐首选
 - 国内可能需要科学上网
 
 ---
@@ -26,7 +31,7 @@
 ### 2. Anthropic Claude
 
 **特点**：擅长分析推理，安全性高，对话质量优秀
-**模型**：Claude-3-haiku, Claude-3-sonnet, Claude-3-opus
+**最新模型**：Claude-3.5-Sonnet (推荐), Claude-3.5-Haiku, Claude-3-Opus
 
 **获取步骤**：
 1. 访问 [Anthropic Console](https://console.anthropic.com/)
@@ -35,9 +40,14 @@
 4. 复制API密钥
 5. 在应用中选择"Anthropic Claude"并配置
 
+**推荐配置**：
+- **最佳选择**：Claude-3.5-Sonnet-20241022（最新版本，性能卓越）
+- **快速响应**：Claude-3.5-Haiku（速度快，成本低）
+- **顶级性能**：Claude-3-Opus（最强推理能力）
+
 **注意事项**：
-- 需要申请API访问权限
-- 按使用量计费
+- Claude-3.5系列是最新版本，性能显著提升
+- 按使用量计费，价格合理
 - 对内容安全要求较高
 
 ---
@@ -45,7 +55,7 @@
 ### 3. 阿里云通义千问
 
 **特点**：中文优化，国内访问稳定，价格相对便宜
-**模型**：qwen-turbo, qwen-plus, qwen-max
+**最新模型**：Qwen2.5-72B-Instruct (推荐), Qwen2.5-32B-Instruct, Qwen2.5-14B-Instruct
 
 **获取步骤**：
 1. 访问 [阿里云DashScope](https://dashscope.aliyun.com/)
@@ -55,8 +65,13 @@
 5. 复制API-KEY
 6. 在应用中选择"通义千问"并配置
 
+**推荐配置**：
+- **最强性能**：Qwen2.5-72B-Instruct（最新旗舰模型）
+- **平衡选择**：Qwen2.5-32B-Instruct（性能与成本平衡）
+- **经济选择**：Qwen-turbo（成本最低）
+
 **注意事项**：
-- 需要实名认证
+- Qwen2.5系列是最新版本，中文能力大幅提升
 - 有免费额度，超出后按量计费
 - 国内访问无障碍
 
@@ -65,7 +80,7 @@
 ### 4. 百度文心一言
 
 **特点**：本土化服务，中文理解能力强
-**模型**：ernie-bot, ernie-bot-turbo, ernie-bot-4
+**最新模型**：ERNIE-4.0-turbo-8k (推荐), ERNIE-4.0-8k, ERNIE-3.5-8k
 
 **获取步骤**：
 1. 访问 [百度千帆大模型平台](https://console.bce.baidu.com/qianfan/)
@@ -74,8 +89,13 @@
 4. 复制API Key和Secret Key
 5. 在应用中选择"文心一言"并配置两个密钥
 
+**推荐配置**：
+- **最佳选择**：ERNIE-4.0-turbo-8k（最新版本，速度快）
+- **高性能**：ERNIE-4.0-8k（顶级性能）
+- **经济选择**：ERNIE-3.5-4k（成本较低）
+
 **注意事项**：
-- 需要实名认证
+- ERNIE-4.0系列是最新版本，性能大幅提升
 - 需要同时配置API Key和Secret Key
 - 有免费调用额度
 
@@ -83,19 +103,26 @@
 
 ### 5. Google Gemini
 
-**特点**：多模态支持，Google生态集成
-**模型**：gemini-pro, gemini-pro-vision
+**特点**：多模态支持，Google生态集成，最新技术
+**最新模型**：Gemini-2.5-flash (推荐), Gemini-2.5-pro, Gemini-2.0-flash-exp
 
 **获取步骤**：
-1. 访问 [Google AI Studio](https://makersuite.google.com/app/apikey)
+1. 访问 [Google AI Studio](https://aistudio.google.com/app/apikey)
 2. 登录Google账户
 3. 创建API密钥
 4. 复制生成的密钥
 5. 在应用中选择"Google Gemini"并配置
 
+**推荐配置**：
+- **最佳选择**：Gemini-2.5-flash（最新稳定版本，性能卓越）
+- **顶级性能**：Gemini-2.5-pro（最强性能版本）
+- **实验体验**：Gemini-2.0-flash-exp（实验版本）
+- **经典选择**：Gemini-1.5-pro（成熟稳定）
+
 **注意事项**：
-- 需要Google账户
-- 部分地区可能无法访问
+- Gemini-2.5是最新版本，性能和速度都有显著提升
+- 支持更长的上下文窗口和更好的推理能力
+- 部分地区可能需要科学上网
 - 有免费使用额度
 
 ---
@@ -131,10 +158,12 @@
 
 ### 模型选择建议
 
-- **日常学习**：GPT-3.5-turbo, qwen-turbo, ernie-bot-turbo
-- **深度分析**：GPT-4, claude-3-sonnet, qwen-max
-- **中文内容**：通义千问, 文心一言
-- **预算有限**：通义千问, 文心一言（有免费额度）
+- **日常学习**：GPT-4o-mini, Qwen2.5-14B-Instruct, ERNIE-4.0-turbo-8k
+- **深度分析**：GPT-4o, Claude-3.5-Sonnet, Qwen2.5-72B-Instruct
+- **中文内容**：Qwen2.5系列, ERNIE-4.0系列（中文优化）
+- **预算有限**：GPT-4o-mini, Qwen-turbo, ERNIE-3.5-4k（性价比高）
+- **最新体验**：Gemini-2.5-flash, Claude-3.5-Sonnet（最新技术）
+- **稳定可靠**：GPT-4o-mini, Gemini-2.5-flash（成熟稳定）
 
 ### 成本控制
 

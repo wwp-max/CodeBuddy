@@ -242,16 +242,243 @@ class NoteEditor {
 
     updatePreview() {
         const previewEl = document.getElementById('notePreview');
-        if (!previewEl || !this.currentNote) return;
+        if (!previewEl) return;
+
+        const content = this.currentNote?.content || document.getElementById('noteEditor')?.value || '';
 
         try {
             // 使用marked.js渲染Markdown
-            const html = marked.parse(this.currentNote.content || '');
+            const html = marked.parse(content);
             previewEl.innerHTML = html;
         } catch (error) {
             console.error('渲染预览失败:', error);
             previewEl.innerHTML = '<p>预览渲染失败</p>';
         }
+    }
+
+    addFullscreenPreviewButton() {
+        // 检查是否已存在全屏按钮
+        if (document.getElementById('fullscreenPreviewBtn')) return;
+
+        const editorFooter = document.querySelector('.editor-footer');
+        if (!editorFooter) return;
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.id = 'fullscreenPreviewBtn';
+        fullscreenBtn.className = 'btn-secondary';
+        fullscreenBtn.innerHTML = '🔍 全屏预览';
+        fullscreenBtn.title = '在全屏模式下查看预览';
+        
+        fullscreenBtn.addEventListener('click', () => {
+            this.openFullscreenPreview();
+        });
+
+        // 插入到预览按钮后面
+        const previewToggle = document.getElementById('previewToggle');
+        if (previewToggle && previewToggle.nextSibling) {
+            editorFooter.insertBefore(fullscreenBtn, previewToggle.nextSibling);
+        } else {
+            editorFooter.appendChild(fullscreenBtn);
+        }
+    }
+
+    removeFullscreenPreviewButton() {
+        const fullscreenBtn = document.getElementById('fullscreenPreviewBtn');
+        if (fullscreenBtn) {
+            fullscreenBtn.remove();
+        }
+    }
+
+    openFullscreenPreview() {
+        const content = this.currentNote?.content || document.getElementById('noteEditor')?.value || '';
+        
+        if (!content.trim()) {
+            alert('没有内容可以预览');
+            return;
+        }
+
+        // 创建全屏预览模态框
+        const fullscreenModal = document.createElement('div');
+        fullscreenModal.id = 'fullscreen-preview-modal';
+        fullscreenModal.className = 'fullscreen-preview-modal';
+        
+        try {
+            const html = marked.parse(content);
+            
+            fullscreenModal.innerHTML = `
+                <div class="fullscreen-preview-header">
+                    <h3>${this.currentNote?.title || '笔记预览'}</h3>
+                    <div class="fullscreen-preview-actions">
+                        <button id="printPreviewBtn" class="btn-secondary" title="打印预览">🖨️ 打印</button>
+                        <button id="closeFullscreenBtn" class="btn-secondary" title="关闭全屏预览">✕ 关闭</button>
+                    </div>
+                </div>
+                <div class="fullscreen-preview-content">
+                    ${html}
+                </div>
+            `;
+        } catch (error) {
+            fullscreenModal.innerHTML = `
+                <div class="fullscreen-preview-header">
+                    <h3>预览错误</h3>
+                    <button id="closeFullscreenBtn" class="btn-secondary">✕ 关闭</button>
+                </div>
+                <div class="fullscreen-preview-content">
+                    <p>预览渲染失败：${error.message}</p>
+                </div>
+            `;
+        }
+
+        // 添加样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .fullscreen-preview-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: white;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            }
+            
+            .fullscreen-preview-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 20px 30px;
+                border-bottom: 1px solid #e5e7eb;
+                background: #f9fafb;
+            }
+            
+            .fullscreen-preview-header h3 {
+                margin: 0;
+                font-size: 1.5rem;
+                color: #111827;
+            }
+            
+            .fullscreen-preview-actions {
+                display: flex;
+                gap: 10px;
+            }
+            
+            .fullscreen-preview-content {
+                flex: 1;
+                padding: 30px;
+                overflow-y: auto;
+                max-width: 800px;
+                margin: 0 auto;
+                width: 100%;
+                box-sizing: border-box;
+                line-height: 1.6;
+            }
+            
+            .fullscreen-preview-content h1,
+            .fullscreen-preview-content h2,
+            .fullscreen-preview-content h3,
+            .fullscreen-preview-content h4,
+            .fullscreen-preview-content h5,
+            .fullscreen-preview-content h6 {
+                margin-top: 2rem;
+                margin-bottom: 1rem;
+                color: #111827;
+            }
+            
+            .fullscreen-preview-content p {
+                margin-bottom: 1rem;
+                color: #374151;
+            }
+            
+            .fullscreen-preview-content pre {
+                background: #f3f4f6;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                overflow-x: auto;
+                margin: 1rem 0;
+            }
+            
+            .fullscreen-preview-content code {
+                background: #f3f4f6;
+                padding: 0.2rem 0.4rem;
+                border-radius: 0.25rem;
+                font-size: 0.875rem;
+            }
+            
+            .fullscreen-preview-content blockquote {
+                border-left: 4px solid #d1d5db;
+                padding-left: 1rem;
+                margin: 1rem 0;
+                color: #6b7280;
+                font-style: italic;
+            }
+            
+            .fullscreen-preview-content ul,
+            .fullscreen-preview-content ol {
+                margin: 1rem 0;
+                padding-left: 2rem;
+            }
+            
+            .fullscreen-preview-content li {
+                margin-bottom: 0.5rem;
+            }
+            
+            .fullscreen-preview-content table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 1rem 0;
+            }
+            
+            .fullscreen-preview-content th,
+            .fullscreen-preview-content td {
+                border: 1px solid #d1d5db;
+                padding: 0.75rem;
+                text-align: left;
+            }
+            
+            .fullscreen-preview-content th {
+                background: #f9fafb;
+                font-weight: 600;
+            }
+            
+            @media print {
+                .fullscreen-preview-header {
+                    display: none;
+                }
+                .fullscreen-preview-content {
+                    padding: 0;
+                    max-width: none;
+                }
+            }
+        `;
+        
+        document.head.appendChild(style);
+        document.body.appendChild(fullscreenModal);
+
+        // 绑定事件
+        document.getElementById('closeFullscreenBtn').addEventListener('click', () => {
+            document.body.removeChild(fullscreenModal);
+            document.head.removeChild(style);
+        });
+
+        const printBtn = document.getElementById('printPreviewBtn');
+        if (printBtn) {
+            printBtn.addEventListener('click', () => {
+                window.print();
+            });
+        }
+
+        // ESC键关闭
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                document.body.removeChild(fullscreenModal);
+                document.head.removeChild(style);
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
     }
 
     togglePreview() {
@@ -264,14 +491,28 @@ class NoteEditor {
         this.isPreviewMode = !this.isPreviewMode;
 
         if (this.isPreviewMode) {
+            // 进入预览模式
             editorEl.classList.add('hidden');
             previewEl.classList.remove('hidden');
             toggleBtn.textContent = '✏️ 编辑';
+            toggleBtn.title = '退出预览模式，返回编辑';
+            toggleBtn.classList.add('preview-active');
+            
+            // 更新预览内容
             this.updatePreview();
+            
+            // 添加全屏预览按钮
+            this.addFullscreenPreviewButton();
         } else {
+            // 退出预览模式
             editorEl.classList.remove('hidden');
             previewEl.classList.add('hidden');
             toggleBtn.textContent = '👁️ 预览';
+            toggleBtn.title = '预览笔记内容';
+            toggleBtn.classList.remove('preview-active');
+            
+            // 移除全屏预览按钮
+            this.removeFullscreenPreviewButton();
         }
     }
 
@@ -286,11 +527,14 @@ class NoteEditor {
             loadingIndicator?.classList.remove('hidden');
 
             // 使用AI分析笔记内容
-            const [summary, keywords, knowledgePoints] = await Promise.all([
+            const [summary, keywords, knowledgeAnalysis] = await Promise.all([
                 window.aiEngine.generateSummary(this.currentNote.content),
                 window.aiEngine.extractKeywords(this.currentNote.content),
-                window.aiEngine.extractKnowledgePoints(this.currentNote.content)
+                window.aiEngine.analyzeKnowledge(this.currentNote.content)
             ]);
+
+            // 转换知识分析结果为统一格式
+            const knowledgePoints = this.convertKnowledgeAnalysis(knowledgeAnalysis);
 
             this.showAnalysisResults({
                 summary,
@@ -334,7 +578,7 @@ class NoteEditor {
                     <h4>🏷️ 关键词</h4>
                     <div class="keywords-list">
                         ${results.keywords.map(kw => 
-                            `<span class="keyword-tag">${kw.word} (${kw.frequency})</span>`
+                            `<span class="keyword-tag">${typeof kw === 'string' ? kw : kw.word || kw}</span>`
                         ).join('')}
                     </div>
                 </div>
@@ -368,6 +612,52 @@ class NoteEditor {
         };
 
         modal.classList.remove('hidden');
+    }
+
+    convertKnowledgeAnalysis(analysis) {
+        const knowledgePoints = [];
+        
+        if (analysis.concepts && analysis.concepts.length > 0) {
+            analysis.concepts.forEach(concept => {
+                knowledgePoints.push({
+                    content: concept,
+                    type: 'concept',
+                    importance: 'medium'
+                });
+            });
+        }
+        
+        if (analysis.definitions && analysis.definitions.length > 0) {
+            analysis.definitions.forEach(definition => {
+                knowledgePoints.push({
+                    content: definition,
+                    type: 'definition',
+                    importance: 'high'
+                });
+            });
+        }
+        
+        if (analysis.steps && analysis.steps.length > 0) {
+            analysis.steps.forEach(step => {
+                knowledgePoints.push({
+                    content: step,
+                    type: 'step',
+                    importance: 'medium'
+                });
+            });
+        }
+        
+        if (analysis.examples && analysis.examples.length > 0) {
+            analysis.examples.forEach(example => {
+                knowledgePoints.push({
+                    content: example,
+                    type: 'example',
+                    importance: 'low'
+                });
+            });
+        }
+        
+        return knowledgePoints;
     }
 
     getPointTypeIcon(type) {

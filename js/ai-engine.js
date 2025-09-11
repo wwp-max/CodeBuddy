@@ -610,17 +610,35 @@ ${text}`;
 
     // Gemini API调用
     async callGemini(prompt, maxTokens) {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${this.apiConfig.model}:generateContent?key=${this.apiConfig.apiKey}`, {
+        // 处理不同版本的Gemini模型
+        const isGemini25 = this.apiConfig.model.startsWith('gemini-2.5');
+        const isGemini2 = this.apiConfig.model.startsWith('gemini-2');
+        
+        // Gemini 2.5使用最新的API配置
+        const generationConfig = {
+            maxOutputTokens: maxTokens,
+            temperature: 0.7
+        };
+        
+        // 为Gemini 2.5和2.0添加更多配置选项
+        if (isGemini25 || isGemini2) {
+            generationConfig.topP = 0.95;
+            generationConfig.topK = 40;
+        } else {
+            generationConfig.topP = 0.8;
+            generationConfig.topK = 10;
+        }
+        
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.apiConfig.model}:generateContent?key=${this.apiConfig.apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    maxOutputTokens: maxTokens,
-                    temperature: 0.7
-                }
+                contents: [{ 
+                    parts: [{ text: prompt }] 
+                }],
+                generationConfig
             })
         });
 
@@ -631,6 +649,90 @@ ${text}`;
 
         const data = await response.json();
         return data.candidates[0]?.content?.parts[0]?.text || '';
+    }
+
+    // 分析概念关系
+    async analyzeConceptRelations(content) {
+        if (!this.isInitialized) {
+            throw new Error('AI引擎未初始化');
+        }
+
+        if (this.isUsingAPI()) {
+            return await this.analyzeConceptRelationsAPI(content);
+        } else {
+            return await this.analyzeConceptRelationsLocal(content);
+        }
+    }
+
+    // API模式分析概念关系
+    async analyzeConceptRelationsAPI(content) {
+        try {
+            const prompt = `请分析以下文本中概念之间的关系，返回JSON格式的关系列表：
+文本：${content}
+
+请返回格式如下的JSON：
+[
+  {
+    "source": "概念A",
+    "target": "概念B", 
+    "relation": "包含/属于/相关/对比",
+    "strength": 0.8
+  }
+]
+
+只返回JSON，不要其他解释。`;
+
+            const response = await this.callAPI(prompt);
+            
+            try {
+                const relations = JSON.parse(response);
+                return Array.isArray(relations) ? relations : [];
+            } catch (parseError) {
+                console.warn('解析概念关系JSON失败，使用本地模拟');
+                return this.analyzeConceptRelationsLocal(content);
+            }
+        } catch (error) {
+            console.warn('分析概念关系失败，使用本地模拟:', error);
+            return this.analyzeConceptRelationsLocal(content);
+        }
+    }
+
+    // 本地模式分析概念关系
+    async analyzeConceptRelationsLocal(content) {
+        // 模拟处理时间
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const keywords = await this.extractKeywords(content, 8);
+        const relations = [];
+        
+        // 简单的关系推断：相邻出现的概念可能相关
+        for (let i = 0; i < keywords.length - 1; i++) {
+            for (let j = i + 1; j < keywords.length; j++) {
+                const concept1 = keywords[i].word || keywords[i];
+                const concept2 = keywords[j].word || keywords[j];
+                
+                // 计算概念在文本中的距离
+                const pos1 = content.toLowerCase().indexOf(concept1.toLowerCase());
+                const pos2 = content.toLowerCase().indexOf(concept2.toLowerCase());
+                
+                if (pos1 !== -1 && pos2 !== -1) {
+                    const distance = Math.abs(pos1 - pos2);
+                    
+                    // 距离越近，关系强度越高
+                    if (distance < 200) {
+                        const strength = Math.max(0.3, 1 - distance / 200);
+                        relations.push({
+                            source: concept1,
+                            target: concept2,
+                            relation: '相关',
+                            strength: Math.round(strength * 10) / 10
+                        });
+                    }
+                }
+            }
+        }
+        
+        return relations.slice(0, 10); // 限制关系数量
     }
 
     // 获取AI状态

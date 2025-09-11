@@ -394,10 +394,121 @@ body {
     background: var(--bg-primary);
     border-left: 1px solid var(--border-light);
     overflow-y: auto;
+    max-height: calc(100vh - 200px);
+    line-height: 1.6;
+    font-size: 1rem;
+    min-height: 400px;
+}
+
+/* 预览内容样式 */
+.note-preview h1, .note-preview h2, .note-preview h3, 
+.note-preview h4, .note-preview h5, .note-preview h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.note-preview h1 { font-size: 2rem; }
+.note-preview h2 { font-size: 1.75rem; }
+.note-preview h3 { font-size: 1.5rem; }
+.note-preview h4 { font-size: 1.25rem; }
+.note-preview h5 { font-size: 1.125rem; }
+.note-preview h6 { font-size: 1rem; }
+
+.note-preview p {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    line-height: 1.7;
+}
+
+.note-preview ul, .note-preview ol {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
+.note-preview li {
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.note-preview code {
+    background: var(--bg-tertiary);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: var(--primary-color);
+}
+
+.note-preview pre {
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-light);
+}
+
+.note-preview pre code {
+    background: none;
+    padding: 0;
+    color: var(--text-primary);
+}
+
+.note-preview blockquote {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 1rem;
+    margin: 1rem 0;
+    font-style: italic;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 1rem;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.note-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.note-preview th,
+.note-preview td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.note-preview th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.note-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+    margin: 1rem 0;
 }
 
 .note-preview.hidden {
     display: none;
+}
+
+/* 预览按钮激活状态 */
+.preview-active {
+    background: var(--primary-color) !important;
+    color: white !important;
+    border-color: var(--primary-color) !important;
+}
+
+.preview-active:hover {
+    background: var(--primary-hover) !important;
 }
 
 .editor-footer {
@@ -407,6 +518,100 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.editor-footer .btn-secondary,
+.editor-footer .btn-ai {
+    white-space: nowrap;
+}
+
+#fullscreenPreviewBtn {
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* AI分析结果样式 */
+.analysis-results {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.analysis-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.analysis-section h4 {
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.analysis-content {
+    background: var(--bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.keywords-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.keyword-tag {
+    background: var(--primary-color);
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-lg);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.knowledge-points-list {
+    list-style: none;
+    padding: 0;
+}
+
+.knowledge-point {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+}
+
+.knowledge-point.high {
+    border-left: 4px solid var(--danger-color);
+}
+
+.knowledge-point.medium {
+    border-left: 4px solid var(--warning-color);
+}
+
+.knowledge-point.low {
+    border-left: 4px solid var(--accent-color);
+}
+
+.point-type {
+    font-size: 1.2rem;
+    flex-shrink: 0;
 }
 
 .word-count {
@@ -620,6 +825,63 @@ body {
 
 .message-content li {
     margin-bottom: var(--spacing-xs);
+}
+
+/* 聊天消息样式 */
+.chat-message {
+    animation: slideInUp 0.3s ease;
+}
+
+.user-message .message-content {
+    background: #e3f2fd;
+    margin-left: 2rem;
+}
+
+.ai-message .message-content {
+    background: #f5f5f5;
+    margin-right: 2rem;
+}
+
+.message-text {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.5;
+}
+
+.message-time {
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+.chat-message.loading {
+    opacity: 0.7;
+}
+
+.chat-message.loading .message-text {
+    position: relative;
+}
+
+.chat-message.loading .message-text::after {
+    content: '...';
+    animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .chat-input-container {

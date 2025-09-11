@@ -80,16 +80,37 @@ class KnowledgeGraph {
 
     async loadGraphData() {
         try {
+            console.log('开始加载知识图谱数据...');
+            
+            // 检查依赖
+            if (!window.storageManager) {
+                console.error('存储管理器未初始化');
+                this.showEmptyState();
+                return;
+            }
+            
+            if (!window.aiEngine) {
+                console.error('AI引擎未初始化');
+                this.showEmptyState();
+                return;
+            }
+            
             // 从存储中加载图谱数据
             const graphData = await window.storageManager.getKnowledgeGraph();
+            console.log('从存储加载的图谱数据:', graphData);
             
-            if (graphData && graphData.nodes && graphData.links) {
+            if (graphData && graphData.nodes && graphData.nodes.length > 0) {
+                console.log('使用已存储的图谱数据');
                 this.nodes = graphData.nodes;
-                this.links = graphData.links;
+                this.links = graphData.links || [];
             } else {
+                console.log('没有存储的图谱数据，从笔记生成...');
                 // 如果没有数据，从笔记生成图谱
                 await this.generateGraphFromNotes();
             }
+            
+            console.log('最终节点数量:', this.nodes.length);
+            console.log('最终连接数量:', this.links.length);
             
             this.render();
         } catch (error) {
@@ -100,14 +121,32 @@ class KnowledgeGraph {
 
     async generateGraphFromNotes() {
         try {
+            console.log('开始从笔记生成知识图谱...');
             const notes = await window.storageManager.getNotes();
-            const { nodes, links } = await this.extractGraphFromNotes(notes);
+            console.log('获取到的笔记:', notes);
             
-            this.nodes = nodes;
-            this.links = links;
+            if (!notes || notes.length === 0) {
+                console.log('没有找到笔记，显示空状态');
+                this.nodes = [];
+                this.links = [];
+                return;
+            }
+            
+            console.log(`找到 ${notes.length} 个笔记，开始提取图谱数据...`);
+            const { nodes, links } = await this.extractGraphFromNotes(notes);
+            console.log('提取完成 - 节点数:', nodes.length, '连接数:', links.length);
+            
+            this.nodes = nodes || [];
+            this.links = links || [];
             
             // 保存生成的图谱
-            await window.storageManager.saveKnowledgeGraph({ nodes, links });
+            if (this.nodes.length > 0) {
+                console.log('保存图谱数据到存储...');
+                await window.storageManager.saveKnowledgeGraph({ nodes: this.nodes, links: this.links });
+                console.log('图谱数据保存成功');
+            } else {
+                console.log('没有生成任何节点，不保存图谱数据');
+            }
         } catch (error) {
             console.error('从笔记生成图谱失败:', error);
             this.nodes = [];
@@ -120,13 +159,21 @@ class KnowledgeGraph {
         const links = [];
         const nodeMap = new Map();
 
+        if (!notes || notes.length === 0) {
+            return { nodes: [], links: [] };
+        }
+
         for (const note of notes) {
+            if (!note || !note.content || note.content.trim().length === 0) {
+                continue;
+            }
+
             // 为每个笔记创建一个节点
             const noteNode = {
                 id: `note_${note.id}`,
-                name: note.title,
+                name: note.title || '无标题笔记',
                 type: 'note',
-                size: Math.min(Math.max(note.content.length / 100, 10), 50),
+                size: Math.min(Math.max(note.content.length / 100, 15), 50),
                 color: '#4f46e5',
                 data: note
             };
@@ -136,54 +183,79 @@ class KnowledgeGraph {
 
             // 提取关键词并创建概念节点
             try {
-                const keywords = await window.aiEngine.extractKeywords(note.content, 5);
+                console.log(`处理笔记: ${note.title}, 内容长度: ${note.content.length}`);
                 
-                for (const keyword of keywords) {
-                    const conceptId = `concept_${keyword.word}`;
+                const keywords = await window.aiEngine.extractKeywords(note.content, 5);
+                console.log(`提取到的关键词:`, keywords);
+                
+                if (keywords && Array.isArray(keywords)) {
+                    console.log(`为笔记 ${note.title} 处理 ${keywords.length} 个关键词`);
                     
-                    if (!nodeMap.has(conceptId)) {
-                        const conceptNode = {
-                            id: conceptId,
-                            name: keyword.word,
-                            type: 'concept',
-                            size: 15 + keyword.frequency * 2,
-                            color: '#10b981',
-                            frequency: keyword.frequency
-                        };
+                    for (const keyword of keywords) {
+                        const keywordText = typeof keyword === 'string' ? keyword : keyword.word;
+                        if (!keywordText) continue;
                         
-                        nodes.push(conceptNode);
-                        nodeMap.set(conceptId, conceptNode);
-                    }
+                        const conceptId = `concept_${keywordText}`;
+                        
+                        if (!nodeMap.has(conceptId)) {
+                            const conceptNode = {
+                                id: conceptId,
+                                name: keywordText,
+                                type: 'concept',
+                                size: 15 + (keyword.frequency || 1) * 2,
+                                color: '#10b981',
+                                frequency: keyword.frequency || 1
+                            };
+                            
+                            nodes.push(conceptNode);
+                            nodeMap.set(conceptId, conceptNode);
+                            console.log(`创建概念节点: ${keywordText}`);
+                        }
 
-                    // 创建笔记到概念的连接
-                    links.push({
-                        source: noteNode.id,
-                        target: conceptId,
-                        type: 'contains',
-                        strength: keyword.relevance,
-                        weight: Math.max(keyword.frequency, 1)
-                    });
+                        // 创建笔记到概念的连接
+                        links.push({
+                            source: noteNode.id,
+                            target: conceptId,
+                            type: 'contains',
+                            strength: keyword.relevance || 0.5,
+                            weight: Math.max(keyword.frequency || 1, 1)
+                        });
+                    }
+                } else {
+                    console.log(`笔记 ${note.title} 没有提取到关键词`);
                 }
 
                 // 分析概念间关系
+                console.log(`分析笔记 ${note.title} 的概念关系...`);
                 const relations = await window.aiEngine.analyzeConceptRelations(note.content);
+                console.log(`提取到的概念关系:`, relations);
                 
-                for (const relation of relations) {
-                    const sourceId = `concept_${relation.source}`;
-                    const targetId = `concept_${relation.target}`;
+                if (relations && Array.isArray(relations)) {
+                    console.log(`为笔记 ${note.title} 处理 ${relations.length} 个概念关系`);
                     
-                    if (nodeMap.has(sourceId) && nodeMap.has(targetId)) {
-                        links.push({
-                            source: sourceId,
-                            target: targetId,
-                            type: 'related',
-                            strength: relation.strength,
-                            weight: relation.strength
-                        });
+                    for (const relation of relations) {
+                        if (!relation.source || !relation.target) continue;
+                        
+                        const sourceId = `concept_${relation.source}`;
+                        const targetId = `concept_${relation.target}`;
+                        
+                        if (nodeMap.has(sourceId) && nodeMap.has(targetId)) {
+                            links.push({
+                                source: sourceId,
+                                target: targetId,
+                                type: 'related',
+                                strength: relation.strength || 0.5,
+                                weight: relation.strength || 0.5
+                            });
+                            console.log(`创建关系连接: ${relation.source} -> ${relation.target}`);
+                        }
                     }
+                } else {
+                    console.log(`笔记 ${note.title} 没有提取到概念关系`);
                 }
             } catch (error) {
                 console.warn(`处理笔记 ${note.title} 时出错:`, error);
+                // 即使出错也继续处理其他笔记
             }
         }
 
@@ -443,7 +515,8 @@ class KnowledgeGraph {
             .style('align-items', 'center')
             .style('justify-content', 'center')
             .style('height', '100%')
-            .style('color', '#6b7280');
+            .style('color', '#6b7280')
+            .style('padding', '2rem');
 
         emptyState.append('div')
             .style('font-size', '4rem')
@@ -451,13 +524,63 @@ class KnowledgeGraph {
             .text('🕸️');
 
         emptyState.append('h3')
-            .style('margin-bottom', '0.5rem')
+            .style('margin-bottom', '1rem')
+            .style('font-size', '1.5rem')
+            .style('color', '#374151')
             .text('暂无知识图谱');
 
         emptyState.append('p')
             .style('text-align', 'center')
-            .style('max-width', '300px')
+            .style('max-width', '400px')
+            .style('line-height', '1.6')
+            .style('margin-bottom', '1.5rem')
             .text('开始创建笔记，AI将自动为您构建知识图谱，展示概念间的关联关系。');
+
+        const refreshBtn = emptyState.append('button')
+            .style('padding', '0.75rem 1.5rem')
+            .style('background', '#4f46e5')
+            .style('color', 'white')
+            .style('border', 'none')
+            .style('border-radius', '0.5rem')
+            .style('cursor', 'pointer')
+            .style('font-size', '0.875rem')
+            .style('font-weight', '500')
+            .text('🔄 刷新图谱')
+            .on('click', () => {
+                this.refresh();
+            });
+
+        refreshBtn.on('mouseover', function() {
+            d3.select(this).style('background', '#4338ca');
+        }).on('mouseout', function() {
+            d3.select(this).style('background', '#4f46e5');
+        });
+    }
+
+    // 调试方法
+    async debugGraph() {
+        console.log('=== 知识图谱调试信息 ===');
+        
+        try {
+            const notes = await window.storageManager.getNotes();
+            console.log('笔记数量:', notes ? notes.length : 0);
+            console.log('笔记列表:', notes);
+            
+            if (notes && notes.length > 0) {
+                console.log('开始生成图谱...');
+                const { nodes, links } = await this.extractGraphFromNotes(notes);
+                console.log('生成的节点数量:', nodes.length);
+                console.log('生成的连接数量:', links.length);
+                console.log('节点详情:', nodes);
+                console.log('连接详情:', links);
+            }
+            
+            console.log('AI引擎状态:', window.aiEngine ? window.aiEngine.getStatus() : '未初始化');
+        } catch (error) {
+            console.error('调试过程中出错:', error);
+        }
+        
+        console.log('=== 调试信息结束 ===');
     }
 
     // 布局切换
